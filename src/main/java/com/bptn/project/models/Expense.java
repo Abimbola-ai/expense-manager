@@ -67,6 +67,8 @@ public class Expense {
 		this.description = description;
 	}
 	
+
+	
 	@Override
 	public String toString() {
 		return id + " | " + category + " | " + amount + " | " + description + " | " + date;

@@ -8,13 +8,20 @@ import java.util.List;
 import java.util.Scanner;
 
 import com.bptn.project.models.Expense;
+import com.bptn.project.storage.FileStorage;
 
 public class ExpenseService {
 
-	// Create an arrayList for the expenses
-	List<Expense> expenses = new ArrayList<>();
+	// Define color codes
+	public static final String RESET = "\u001B[0m";
+	public static final String RED = "\u001B[31m";
+	public static final String GREEN = "\u001B[32m";
 
-	private int nextId = 1;
+	// Create an arrayList for the expenses
+	List<Expense> expenses = FileStorage.loadExpenses();
+
+	// Initialize nextId based on existing expenses
+	private int nextId = expenses.isEmpty() ? 1 : expenses.stream().mapToInt(Expense::getId).max().getAsInt() + 1;
 
 	// Convert categoryList to an arrayList
 	String[] categoryList = { "Food & Dining", "Transport", "Shopping", "Utilities", "Healthcare", "Entertainment",
@@ -27,7 +34,7 @@ public class ExpenseService {
 	// Method to select category
 	private String selectCategory() {
 		while (true) {
-			System.out.println("Please select a category for your expense: ");
+			System.out.println(GREEN + "Please select a category for your expense: " + RESET);
 			for (int i = 0; i < categoryArrayList.size(); i++) {
 				System.out.println((i + 1) + ". " + categoryArrayList.get(i));
 			}
@@ -36,10 +43,10 @@ public class ExpenseService {
 				if (categorySelection <= categoryArrayList.size() && categorySelection > 0) {
 					return categoryArrayList.get(categorySelection - 1);
 				} else {
-					System.out.println("Invalid selection. Please try again.");
+					System.out.println(RED + "Invalid selection. Please try again." + RESET);
 				}
 			} catch (InputMismatchException e) {
-				System.out.println("Error: Invalid input. Please enter a number between 1 and 10");
+				System.out.println(RED + "Error: Invalid input. Please enter a number between 1 and 10" + RESET);
 				scanner.next(); // clear the input buffer
 			}
 		}
@@ -55,11 +62,11 @@ public class ExpenseService {
 				if (amount > 0.0) {
 					return amount;
 				} else {
-					System.out.println("Amount must be greater than zero.");
+					System.out.println(RED + "Amount must be greater than zero." + RESET);
 				}
 
 			} catch (InputMismatchException e) {
-				System.out.println("Error: Please enter a validnumeric value.");
+				System.out.println(RED + "Error: Please enter a validnumeric value." + RESET);
 				scanner.next(); // clear the input buffer
 			}
 		}
@@ -67,13 +74,17 @@ public class ExpenseService {
 
 	// Method to input description
 	public String inputDescription() {
-		scanner.nextLine(); // Clear scanner buffer before taking the next input
+//		if (scanner.hasNextLine()) {
+//			scanner.nextLine(); // Clear scanner buffer before taking the next input
+//		}
+		
 		System.out.println("Please enter a description for the expense: ");
 		return scanner.nextLine();
 	}
 
 	// Method to add a new expense
 	public void addExpense() {
+	
 		String category = selectCategory();
 		double amount = inputAmount();
 		String description = inputDescription();
@@ -81,6 +92,7 @@ public class ExpenseService {
 		// Create expense object
 		Expense expense = new Expense(nextId++, category, amount, description, date);
 		expenses.add(expense); // add to the ArrayList
+		FileStorage.saveExpenses(expenses); // Save to file
 		System.out.println("Expense added successfully");
 	}
 
@@ -112,11 +124,12 @@ public class ExpenseService {
 
 		while (true) {
 			System.out.println("Select the field you want to edit: ");
-			System.out.println("1. Category");
-			System.out.println("2. Amount");
-			System.out.println("3. Description");
-			System.out.println("4. Exit Edit Menu");
+			System.out.println(RED + "1." + RESET + GREEN + "Category");
+			System.out.println(RED + "2." + RESET + GREEN + "Amount");
+			System.out.println(RED + "3." + RESET + GREEN + "Description");
+			System.out.println(RED + "4." + RESET + GREEN +"Exit Edit Menu");
 
+			
 			int choice = scanner.nextInt();
 			scanner.nextLine(); // clear buffer
 
@@ -135,23 +148,62 @@ public class ExpenseService {
 				break;
 			case 4:
 				System.out.println("Exiting edit menu.");
+				FileStorage.saveExpenses(expenses);
 				return;
-			default: 
+			default:
 				System.out.println("Invalid choice. Please enter a umber between 1 and 4.");
 			}
 		}
 
 	}
 
-	// Method to delete expense
+	// Method to delete an expense by id
 	public void deleteExpense(int id) {
+		Expense expenseToRemove = null;
+		
+		for (Expense expense: expenses) {
+			if (expense.getId() == id) {
+				expenseToRemove = expense;
+				break; // Exit the loop after finding the expense
+			}
+			
+		}
+		
+		if (expenseToRemove != null) {
+			expenses.remove(expenseToRemove);
+			FileStorage.saveExpenses(expenses); // Save changes
+			System.out.println("Expense with ID " + id + " has been removed.");
+		} else {
+			System.out.println("Expense with ID " + id + "  not found.");
+		}
 
 	}
+	
 
 	// Method to retrieve all expenses
 	public List<Expense> getAllExpenses() {
-		List<Expense> currentExpenses = new ArrayList<>();
-		return currentExpenses;
+		return expenses;
 	}
+	
+	// Method to display the expense table.
+	public void displayExpenses() {
+		if (expenses.isEmpty()) {
+			System.out.println(RED + "No expenses found." + RESET);
+			return;
+		}
+		System.out.println("\n" + GREEN + "Your Expenses:" + RESET);
+	    System.out.println(RED + "--------------------------------------------------------------------------" + RESET);
+	    System.out.printf(RED + "| %-3s | %-15s | %-10s | %-25s | %-10s |\n" + RESET, 
+	                      "ID", "Category", "Amount", "Description", "Date");
+	    System.out.println(RED + "--------------------------------------------------------------------------" + RESET);
+	    
+	    for (Expense expense: expenses) {
+	    	System.out.printf("| %-3d | %-15s | %-10.2f | %-25s | %-10s |\n",expense.getId(), expense.getCategory(), expense.getAmount(),
+                    expense.getDescription().length() > 25 ? expense.getDescription().substring(0, 22) + "...": expense.getDescription(), expense.getDate());
+	    }
+	    System.out.println(RED + "--------------------------------------------------------------------------" + RESET);
+	}
+	
+	
 
 }
